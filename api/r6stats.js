@@ -8,48 +8,39 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Nick não informado.' });
   }
 
-  const platMap = { pc: 'ubi', psn: 'psn', xbox: 'xbl' };
+  const platMap = { pc: 'uplay', psn: 'psn', xbox: 'xbl' };
   const targetPlat = platMap[platform.toLowerCase()] || 'psn';
 
   try {
-    const url = `https://r6.tracker.network/r6siege/profile/${targetPlat}/${encodeURIComponent(name)}/overview`;
-    
-    const response = await fetch(url, {
+    // Consulta a API direta da comunidade R6 Tab / Stats
+    const response = await fetch(`https://api.r6stats.com/api/v1/stats/${encodeURIComponent(name)}/${targetPlat}/generic`, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        'User-Agent': 'KeefNoteApp/1.0'
       }
     });
 
     if (!response.ok) {
-      return res.status(200).json({
-        rank: 'Verificado',
-        mmr: 0,
-        kd: 1.0,
-        winRate: 50,
-        wins: 0,
-        losses: 0,
-        playtime: 'Perfil Ativo',
-        topOperator: 'R6'
-      });
+      // Tenta rota alternativa pública da Ubisoft caso a principal falhe
+      const altResponse = await fetch(`https://r6.tracker.network/api/v0/assets/r6-siege/players/${encodeURIComponent(name)}`);
+      if (!altResponse.ok) throw new Error('Jogador não encontrado');
     }
 
-    const html = await response.text();
-
-    const kdMatch = html.match(/Kill\/Death\s*<\/span>\s*<span[^>]*>([\d.]+)/i) || html.match(/"kd":([\d.]+)/i);
-    const winMatch = html.match(/Win %<\/span>\s*<span[^>]*>([\d.]+)%/i) || html.match(/"winPct":([\d.]+)/i);
+    const data = await response.json();
+    const stats = data.stats?.general || {};
+    const ranked = data.stats?.queue_stats?.ranked || {};
 
     return res.status(200).json({
-      rank: 'Conectado',
-      mmr: 0,
-      kd: kdMatch ? parseFloat(kdMatch[1]) : 1.0,
-      winRate: winMatch ? parseFloat(winMatch[1]) : 50,
-      wins: 0,
-      losses: 0,
-      playtime: 'OK',
-      topOperator: 'R6 Tracker'
+      rank: data.progression?.level ? `Nível ${data.progression.level}` : 'Ativo',
+      mmr: ranked.mmr || 0,
+      kd: stats.kd ? parseFloat(stats.kd.toFixed(2)) : 0,
+      winRate: stats.win_loss_ratio ? Math.round(stats.win_loss_ratio * 100) : 0,
+      wins: stats.wins || 0,
+      losses: stats.losses || 0,
+      playtime: stats.playtime ? `${Math.round(stats.playtime / 3600)} h` : 'N/D',
+      topOperator: 'R6 Player'
     });
   } catch (err) {
-    return res.status(500).json({ error: 'Erro de conexão com R6 Tracker.' });
+    // Se a API externa estiver fora do ar, devolve estrutura clara para a app
+    return res.status(404).json({ error: 'Não foi possível obter dados automáticos para este Nick.' });
   }
 };
