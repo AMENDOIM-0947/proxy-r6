@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/r6stats.js": { "maxDuration": 10 }
+  },
+  "rewrites": [
+    { "source": "/api/r6", "destination": "/api/r6stats" }
+  ]
+}

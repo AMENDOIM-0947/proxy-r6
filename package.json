@@ -1,0 +1,16 @@
+{
+  "name": "keef-r6-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Proxy serverless (Vercel) que normaliza estatísticas de Rainbow Six Siege para o Keef Note.",
+  "license": "MIT",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "vercel dev",
+    "test": "node test.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "vercel": "^39.0.0"
+  }
+}
